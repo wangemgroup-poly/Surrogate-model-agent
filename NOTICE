@@ -1,0 +1,37 @@
+Surrogate Model Agent — surrogate-assisted optimisation of CST antenna models
+Copyright (C) 2026 MiraDaddy, Wangemgroup
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Repository: https://github.com/wangemgroup-poly/surrogate-model-agent
+
+--------------------------------------------------------------------------------
+Third-party notices
+
+CST Studio Suite is a product of Dassault Systemes. This program is an
+independent tool that drives a locally installed copy through its documented
+Python result library and VBA macro interface. No CST component is included in
+or distributed with this program; the CST Python libraries are loaded at run
+time from the user's own installation.
+
+The "sb_sadea" proposal method implements the algorithm described in
+Liu et al., "An Efficient Method for Antenna Design Based on a Self-Adaptive
+Bayesian Neural Network Assisted Global Optimization Technique", IEEE
+Transactions on Antennas and Propagation, 2022, DOI 10.1109/TAP.2022.3211732.
+Please cite that paper if you publish results obtained with it. This
+implementation is not a complete reproduction; the differences are documented in
+docs/USAGE.md and docs/使用说明.md.
+
+Dependencies (installed separately, not distributed with this program):
+numpy, scipy, scikit-learn, joblib, threadpoolctl (all BSD-3-Clause) and,
+optionally, PyTorch (BSD-3-Clause).

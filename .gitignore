@@ -1,0 +1,11 @@
+# Local environment
+.venv/
+__pycache__/
+*.pyc
+
+# Task working directories: they contain absolute paths to your own CST projects,
+# full-wave results, trained models and frozen batches. Never commit them.
+tasks/
+
+# CST project backups created by `materialize`
+backup_*/

@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "project": "C:\path\to\your_structure.cst",
+  "cst_install": "C:\Program Files (x86)\CST Studio Suite 2025",
+  "solver": "frequency",
+
+  "parameters": {
+    "param_a": [0.5, 0.7],
+    "param_b": [8.0, 9.5],
+    "param_c": [1.0, 1.5]
+  },
+
+  "metrics": [
+    {
+      "name": "S11_low_band_dB",
+      "kind": "curve",
+      "tree": "1D Results\S-Parameters\S1,1",
+      "transform": "db20",
+      "reduce": "max",
+      "band": [17.8, 18.2],
+      "op": "<",
+      "limit": -11,
+      "scale": 1
+    },
+    {
+      "name": "SLL_low_dB",
+      "kind": "sll_phi_cut",
+      "frequency": 17.8,
+      "phi": 0,
+      "port": 1,
+      "op": "<=",
+      "limit": -9,
+      "scale": 1
+    },
+    {
+      "name": "gain_ripple_dB",
+      "kind": "curve",
+      "tree": "Tables\1D Results\Realized Gain,Theta=0,Phi=0.0",
+      "transform": "real",
+      "reduce": "ripple",
+      "band": [17.8, 20.2],
+      "op": "<",
+      "limit": 2,
+      "scale": 0.25
+    },
+    {
+      "name": "minimum_gain_dBi",
+      "kind": "curve",
+      "tree": "Tables\1D Results\Realized Gain,Theta=0,Phi=0.0",
+      "transform": "real",
+      "reduce": "min",
+      "band": [17.8, 20.2],
+      "scale": 1
+    }
+  ],
+
+  "simulation_budget": 0,
+  "cpus": 16,
+  "timeout_minutes": 45,
+
+  "proposal_method": "sb_sadea",
+  "sb_sadea": { "surrogate": "gp" },
+  "include_global_gp": true,
+  "trust_radius": 0.2,
+  "search_pool": 50000,
+  "purge_distance": 0.01,
+  "conservative_sigma": 1,
+  "extrapolation_ratio": 2,
+  "disagreement_limit": 2,
+  "materialize": { "on": "improvement", "max": 3 }
+}
