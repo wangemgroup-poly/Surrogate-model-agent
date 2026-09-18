@@ -78,6 +78,55 @@ The script builds a synthetic three-parameter "structure", imports 60 analytic s
 they were full-wave results, selects and trains a surrogate, and freezes one SB-SADEA candidate —
 the whole surrogate half of the loop, on any machine.
 
+## 3b. Guided setup (`setup`)
+
+```bat
+.venv\Scripts\python.exe agent.py setup                        REM asks for everything
+.venv\Scripts\python.exe agent.py setup --project X.cst --lang en
+```
+
+The wizard walks through the traps that cost the most time when a task is written by hand:
+
+1. **Project check** — refuses a project that is still open, reports how many runs carry readable
+   parameters, and lists the 1D result trees so you pick a target from a list instead of typing a
+   tree path.
+2. **Sibling versions** — finds other `.cst` files in the same folder, tells you for each whether
+   it is the same structure (geometry files *and* fixed parameter values) and how many runs it
+   holds, and offers to merge them.
+3. **Parameter box** — shows optimiser range, observed range across the saved runs, and the
+   suggested union; flags any numeric parameter that varies between runs but is not an optimiser
+   parameter, because the import refuses data otherwise.
+4. **Targets** — value transform, reduction, band, limit, scale and penalty weight. Band endpoints
+   are snapped to exact samples of the stored curve, and it checks the band lies inside the
+   simulated frequency range. For a side-lobe target it verifies the φ-cuts were actually stored.
+5. **Sub-band advice** — see below.
+6. **Data sufficiency** — whether you have enough designs to train (`max(30, 3d)`) and to run
+   SB-SADEA (`4d`), and how many more you need otherwise.
+7. Writes the config, then optionally creates the task and imports the data. **The wizard never
+   starts the solver**; the budget it writes is 0.
+
+### Sub-band advice
+
+For a target defined as "worst value over a band", the wizard reads the curve of every saved run
+and locates, per design, the frequency at which that worst value occurs. If those locations sit
+close together, one whole-band target models well. If they jump between designs — typically a
+resonance moving through the band — the wizard proposes splitting at the gaps between clusters.
+
+The reason is measurable: a quantity whose location moves is not a smooth function of the
+parameters, so the surrogate predicts it poorly, and the optimiser is then steered by an error
+larger than the improvement it is chasing.
+
+You can ask the wizard to **measure this on your own data** before deciding. It cross-validates
+both formulations on the same designs, estimating the same physical quantity — the worst value in
+the band — either directly or as the worst of per-sub-band predictions, and prints both errors.
+Adopt the split only if the numbers justify it.
+
+### What the wizard cannot check
+
+Mesh convergence, port and boundary correctness, and whether the model is the structure you
+intended. Imported runs carry no solver log, so a clean wizard report does **not** mean the
+simulation setup is physically right — that judgement stays with you.
+
 ## 4. The workflow
 
 ```

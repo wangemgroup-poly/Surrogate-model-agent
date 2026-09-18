@@ -17,8 +17,22 @@ def discard(task):
         if r['state']=='pending':r['state']='discarded'
     write(p,b);s.update(batch=None,phase='trained' if s['model'] else 'initialized');write(t/'state.json',s);event(t,'未运行候选已放弃，历史批次保留。')
 
+def guided(project=None,lang=None,config=None,task=None):
+    """Wizard: inspect a project, define targets, advise on sub-band splitting, then create the task."""
+    from simagent.setup import wizard,ask,t
+    path,projects,lang=wizard(project,lang,config)
+    if ask(lang,'create',default='Y').lower() not in ('y','yes',''):print(t(lang,'skip',path=path));return None
+    t2=Path(task or ask(lang,'task_path',default=str(ROOT/'tasks'/Path(read(path)['project']).stem))).resolve()
+    with lock(t2):
+        engine.init(t2,read(path))
+        engine.import_cst(t2,projects if len(projects)>1 else None)
+        engine.train(t2);engine.report(t2)
+    print(t(lang,'done',path=t2))
+    return t2
+
 def dispatch(a):
     if a.command=='bounds':print(json.dumps(engine.union_bounds(a.project),ensure_ascii=False,indent=2));return
+    if a.command=='setup':guided(a.project[0] if a.project else None,a.lang,a.config,a.task);return
     t=Path(a.task).resolve()
     if a.command=='pause':(t/'PAUSE').touch();print('已请求在当前求解结束后暂停。');return
     with lock(t):
@@ -39,18 +53,26 @@ def dispatch(a):
         elif a.command in ('status','report'):print(engine.report(t))
 
 def wizard():
-    print('\n仿真替代模型 Agent 0.3  Copyright (C) 2026 MiraDaddy, Wangemgroup')
+    print('\n仿真替代模型 Agent 0.4  Copyright (C) 2026 MiraDaddy, Wangemgroup')
     print('本程序不提供任何担保，以 GNU GPL v3 或更新版本发布，欢迎在同一许可下再分发；详见 LICENSE。')
     print('选择结构 → 审计数据 → 自动比较算法 → 代理优化 → CST验收 → 回填更新')
-    name=input('任务文件夹（回车使用 tasks/ten_slot_demo）：').strip().strip('"') or str(ROOT/'tasks/ten_slot_demo');t=Path(name).resolve()
+    print('1 新建任务（引导式：导入工程、设定目标、分段建议）   2 打开已有任务   0 退出')
+    print('1 Guided setup (import a project, define targets, sub-band advice)   2 Open an existing task   0 Quit')
+    first=input('选择 / choose: ').strip()
+    if first=='0':return
+    if first=='1':
+        t=guided()
+        if t is None:return
+    else:
+        name=input('任务文件夹 / task directory: ').strip().strip('"');t=Path(name).resolve()
     if not (t/'config.json').exists():
-        print('新任务需要结构文件、可调参数及范围、性能目标和总仿真预算。')
-        cfg=input('CST结构文件路径，或已准备的配置JSON路径：').strip().strip('"')
-        if Path(cfg).suffix.lower()=='.cst':
-            from simagent.configure import interactive
-            config=interactive(cfg,ROOT/'examples/ten_slot_config.json')
-        else:config=read(cfg)
-        with lock(t):engine.init(t,config)
+        print('该目录还没有任务。新任务需要结构文件、可调参数及范围、性能目标和总仿真预算。')
+        print('This directory holds no task yet. Give a prepared configuration JSON, or press Enter to use the guided setup.')
+        cfg=input('配置JSON路径（回车转引导式建任务）/ config JSON path: ').strip().strip('"')
+        if not cfg or Path(cfg).suffix.lower()=='.cst':
+            if guided(cfg or None,task=str(t)) is None:return
+        else:
+            with lock(t):engine.init(t,read(cfg))
     while True:
         print('\n1 读取CST已有结果（可合并同结构其他版本）  2 导入全波指标JSON  3 自动选模/训练\n4 代理优化候选  5 CST验证/恢复  6 自动闭环\n7 初始全波采样计划  8 查看报告  9 检查工程  10 源工程重新登记（几何未变时）\n11 把最优设计写回源工程求解保存  0 退出')
         choice=input('选择：').strip()
@@ -80,6 +102,9 @@ def main():
         if cmd in ('validate','resume','run'):q.add_argument('--budget',type=int,required=True)
         if cmd=='run':q.add_argument('--rounds',type=int,default=3)
     q=sub.add_parser('bounds');q.add_argument('--project',action='append',required=True,help='读取各工程优化器范围并给出并集')
+    q=sub.add_parser('setup');q.add_argument('--project',action='append',help='CST工程路径；不给则交互询问')
+    q.add_argument('--lang',choices=['en','zh'],help='向导语言；不给则交互询问')
+    q.add_argument('--config',help='生成的配置文件路径');q.add_argument('--task',help='任务目录')
     a=p.parse_args()
     if a.command:dispatch(a)
     else:wizard()

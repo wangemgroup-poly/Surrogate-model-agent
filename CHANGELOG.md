@@ -5,6 +5,37 @@
 All notable changes to this tool. Dates are the dates the behaviour was validated against real
 CST projects in a waveguide slot-array study (4, 6, 8, 10 and 12 radiating slots).
 
+## 0.4.0
+
+### Added
+- **`setup` — guided task creation.** Inspects a CST project, reports how many runs carry readable
+  parameters, finds sibling versions of the same structure and offers to merge them, suggests the
+  parameter box from optimiser ranges plus observed sample values, lets targets be defined from a
+  list of result trees, snaps band endpoints to stored samples, verifies stored φ-cuts, and checks
+  whether there is enough data to train and to run SB-SADEA. Bilingual (`--lang en|zh`); never
+  starts the solver.
+- **Sub-band advice.** For worst-over-band targets the wizard locates, per design, the frequency of
+  the worst value; when those locations jump between designs it proposes splitting at the gaps.
+  On request it *measures* the effect by cross-validating whole-band against segmented surrogates
+  on the user's own data, estimating the same quantity both ways, and prints both errors.
+- **`cst.read_curves`** — whole 1D curves for every saved run, skipping runs on a different grid.
+
+### Fixed
+- `examples/config_template.json` was not valid JSON: Windows paths and result trees contained
+  single backslashes, so copying the template produced a parse error on `init`. Backslashes are
+  now escaped, and a test loads and validates every shipped example.
+- The console menu's "new task from a `.cst` file" path called a config builder that read
+  `examples/ten_slot_config.json`, a file this repository never shipped, so it always failed.
+  That builder is removed; the menu now routes to `setup`, and a test checks that no shipped
+  source file references a missing example.
+
+### Changed
+- `config_template.json` is now a generic two-port component. The one antenna-specific metric
+  (`sll_phi_cut`) is still shown, named so it cannot be copied by accident.
+- Documentation repositioned: the tool is for any CST parametric frequency-domain model whose
+  goals come from 1D results (filters, couplers, matching networks, waveguide components, …).
+  Antennas are one example, and the far-field side-lobe metric is the only antenna-specific part.
+
 ## 0.3.0
 
 ### Added

@@ -1,10 +1,14 @@
 **English** | [中文](README.zh-CN.md)
 
-# Surrogate Model Agent for CST Antenna Optimisation
+# Surrogate Model Agent for CST
+
+*Surrogate-assisted optimisation for any CST parametric frequency-domain model.*
 
 A local, fully offline agent that learns a surrogate model from CST Studio Suite full-wave
 results, **optimises on the surrogate**, freezes the proposed designs, and then lets **CST
-decide** whether they are real. It runs as a plain command-line tool — no API keys, no network
+decide** whether they are real. It is not tied to any particular component: anything whose goals
+can be computed from 1D results — filters, couplers, matching networks, waveguide components,
+frequency-selective surfaces, antennas — is configured the same way, by naming result trees. It runs as a plain command-line tool — no API keys, no network
 access, no cloud service. Any LLM assistant with shell access (Claude Code, Cursor, Copilot
 Chat, …) can drive it by reading [`AGENTS.md`](AGENTS.md); you can also run it by hand.
 
@@ -25,9 +29,9 @@ loop while keeping a hard separation:
 * CST **disposes** — only measured full-wave results decide whether a design passes;
 * every claim in the generated report is traceable to a stored file hash, run ID and batch.
 
-In a 10-slot / 4-slot / 6-slot / 8-slot / 12-slot waveguide slot-array study the loop reached a
-fully compliant 8-slot design in 34 solver runs after starting from designs that missed the
-worst-band S11 target by more than 3 dB.
+The loop has been exercised on waveguide slot arrays, where it reached a fully compliant design
+in 34 solver runs starting from designs that missed the worst-band S11 target by more than 3 dB.
+Nothing in the workflow is specific to that problem.
 
 ---
 
@@ -37,6 +41,7 @@ worst-band S11 target by more than 3 dB.
 |---|---|
 | OS | Windows (the CST result library and the VBA macro runner are Windows-only) |
 | CST | CST Studio Suite 2025, **frequency-domain** solver, parametric project |
+| Targets | Anything computable from stored 1D results (S-parameters, transmission, gain tables, group delay, efficiency …). An optional metric type reads far-field φ-cuts for antenna side-lobe level |
 | Python | 3.12 — required by the CST 2025 Python result library |
 | Packages | numpy, scipy, scikit-learn, joblib, threadpoolctl (see `requirements.txt`) |
 | Optional | PyTorch, only for the variational-inference BNN surrogate (`sb_sadea.surrogate = "bnn"`) |
@@ -85,6 +90,7 @@ init ──► import-cst / import-json ──► train ──► propose ──
 
 | Command | What it does |
 |---|---|
+| `setup [--project X.cst] [--lang en\|zh]` | **Guided setup**: inspect the project, check it, define targets interactively, advise whether a target needs splitting into sub-bands, write the config and create the task |
 | `init --task DIR --config FILE` | Create a task; register the source project's file hash, geometry signature and fixed-parameter signature |
 | `bounds --project A.cst [--project B.cst]` | Print each project's optimiser ranges and their union — useful before writing a config |
 | `inspect --task DIR` | Dump run IDs, parameter definitions and result tree items of the source project |

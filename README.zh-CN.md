@@ -1,9 +1,12 @@
 [English](README.md) | **中文**
 
-# CST 天线优化的仿真替代模型 Agent
+# CST 仿真替代模型 Agent
+
+*面向任意 CST 参数化频域模型的替代模型优化。*
 
 一个完全离线的本地 Agent：用 CST Studio Suite 的全波结果训练替代模型，**在替代模型上做优化**，
-把候选设计连同预测一起冻结，再由 **CST 裁决**它们是否真的达标。它是一个普通的命令行程序——
+把候选设计连同预测一起冻结，再由 **CST 裁决**它们是否真的达标。它不限定器件类型：只要目标能从一维结果算出来——滤波器、耦合器、匹配网络、波导器件、
+频率选择表面、天线——配置方式完全一样，只是结果树路径不同。它是一个普通的命令行程序——
 **不需要 API key、不联网、不依赖云服务**。任何能执行命令的大模型助手（Claude Code、Cursor、
 Copilot Chat……）读 [`AGENTS.md`](AGENTS.md) 就能驱动它，你也可以完全手工使用。
 
@@ -23,8 +26,8 @@ Bayesian Neural Network Assisted Global Optimization Technique*, IEEE TAP 2022
 * **CST 才有裁决权**——只有实测的全波结果能判定达标；
 * 报告里每个数字都能追溯到文件哈希、Run ID 和批次。
 
-在一项波导缝隙阵（4/6/8/10/12 缝）研究中，起点设计的带内最差 S11 离目标还差 3 dB 以上，
-该闭环用 34 次求解找到了完全达标的 8 缝设计。
+该闭环在波导缝隙阵上实测过：起点设计的带内最差 S11 离目标还差 3 dB 以上，用 34 次求解找到了
+完全达标的设计。流程本身与这个具体问题无关。
 
 ---
 
@@ -35,6 +38,7 @@ Bayesian Neural Network Assisted Global Optimization Technique*, IEEE TAP 2022
 | 操作系统 | Windows（CST 结果库与 VBA 宏执行器仅支持 Windows）|
 | CST | CST Studio Suite 2025，**频域**求解器，参数化工程 |
 | Python | 3.12——CST 2025 的 Python 结果库要求 |
+| 目标指标 | 任何能从已保存的一维结果算出的量（S 参数、传输系数、增益表、群时延、效率……）；另有一个可选类型读远场 φ 切面算天线旁瓣 |
 | 依赖 | numpy、scipy、scikit-learn、joblib、threadpoolctl（见 `requirements.txt`）|
 | 可选 | PyTorch，仅用于变分推断 BNN 代理（`sb_sadea.surrogate = "bnn"`）|
 
@@ -80,6 +84,7 @@ init ──► import-cst / import-json ──► train ──► propose ──
 
 | 命令 | 作用 |
 |---|---|
+| `setup [--project X.cst] [--lang en\|zh]` | **引导式建任务**：读取并体检工程、交互定义目标、给出是否需要分段的建议、写配置并建任务 |
 | `init --task 目录 --config 文件` | 建任务；登记源工程的文件哈希、几何签名与固定参数签名 |
 | `bounds --project A.cst [--project B.cst]` | 打印各工程的优化器范围及其并集，写配置前用 |
 | `inspect --task 目录` | 导出源工程的 Run 列表、参数定义与结果树条目 |

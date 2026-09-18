@@ -116,6 +116,25 @@ def extract(c,project,run,mod=None):
         values[spec['name']]=float(value)
     return dict(id=f'CST_Run_{run}',parameters={n:float(pars[n]) for n in c['parameters']},metrics=values,provenance=dict(project=str(project),run_id=run,frequency_or_angle_sample_counts=counts))
 
+def read_curves(c,tree,transform='db20',project=None,runs=None,notify=None):
+    """Whole 1D curves for every saved run. The setup wizard needs the curves themselves, not the reduced
+    metric, to see where each design's worst point sits. Runs on a different frequency grid are skipped."""
+    p=Path(project or c['project']);mod=module(c,p);ids=[i for i in (runs or mod.get_all_run_ids()) if i>0]
+    freq=None;rows=[];kept=[]
+    for k,run in enumerate(ids):
+        try:
+            item=mod.get_result_item(tree,run);f=np.asarray(item.get_xdata(),float);v=np.asarray(item.get_ydata())
+            if transform=='db20':v=20*np.log10(np.maximum(abs(v),1e-300))
+            elif transform=='abs':v=abs(v)
+            else:v=v.real
+            if freq is None:freq=f
+            if len(f)!=len(freq) or not np.allclose(f,freq) or not np.isfinite(v).all():continue
+            rows.append(v);kept.append(run)
+        except Exception:continue
+        if notify and k and k%100==0:notify(f'{k}/{len(ids)}')
+    assert kept,'没有可读的曲线；请检查结果树路径'
+    return freq,np.asarray(rows),kept
+
 def import_existing(c,project=None):
     p=Path(project or c['project']);mod=module(c,p);db=p.with_suffix('')/'Result/Storage.sdb';stamp=(db.stat().st_size,db.stat().st_mtime_ns)
     rows=[];errors=[];allpars=[]

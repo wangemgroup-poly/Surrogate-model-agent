@@ -19,6 +19,12 @@ If you are such an assistant: read this file top to bottom before running anythi
 that is the single source of truth. You never need to invent state: read `config.json`,
 `state.json`, `data.json`, `events.jsonl`, `报告.md` and the `batches/*/batch.json` files.
 
+**Scope.** It drives any CST parametric frequency-domain project whose goals can be computed from
+1D results — filters, couplers, matching networks, waveguide components, frequency-selective
+surfaces, antennas. Nothing about the method is antenna-specific; the far-field side-lobe metric
+(`sll_phi_cut`) is the one metric type that is. If the user's goals need a quantity the metric
+types do not cover, say so rather than approximating it.
+
 Command reference: [`README.md`](README.md). Full manual: [`docs/USAGE.md`](docs/USAGE.md)
 (Chinese: [`docs/使用说明.md`](docs/使用说明.md)).
 
@@ -40,6 +46,19 @@ Command reference: [`README.md`](README.md). Full manual: [`docs/USAGE.md`](docs
    failure, and say so explicitly when you do.
 
 ## 3. Starting a new structure
+
+If the user has not yet defined targets, or you are unsure the project is usable, hand them the
+wizard instead of writing a config yourself — it is interactive, so **it must run in a terminal
+the user can type into**, not inside your own tool call:
+
+```bat
+.venv\Scripts\python.exe agent.py setup --lang en
+```
+
+It checks the project, finds sibling versions of the same structure, suggests the parameter box,
+lists the available result trees, snaps band endpoints to stored samples, advises on sub-band
+splitting, and reports whether there is enough data. It never starts the solver. When the user
+would rather you did it, do it yourself as below.
 
 ```bat
 REM 1. find every project file of the same structure, not only the newest one
@@ -72,6 +91,27 @@ first candidate — then ask for a simulation budget.
 
 If a metric uses `"band": [f1, f2]`, both endpoints must be exact frequency samples of the
 result curve, otherwise extraction fails. Verify before creating the task.
+
+### When to split a band into sub-bands
+
+A "worst value over a band" target is only easy to model while the worst value stays in roughly
+the same place. Once the worst point jumps between designs — a resonance moving through the band —
+the quantity stops being a smooth function of the parameters, the surrogate's error on it grows
+past the improvement being chased, and the loop stalls with the whole band at one plateau.
+
+Diagnose it from data you already have, not from intuition:
+
+```python
+from simagent import cst
+from simagent.setup import worst_frequencies, suggest_segments, segmentation_gain
+```
+
+`worst_frequencies` gives the per-design location of the worst value; if those cluster in two or
+three separated groups, `suggest_segments` proposes the split, and `segmentation_gain`
+cross-validates whole-band against segmented on the user's own designs and returns both errors.
+Quote both numbers when you recommend a split — it changes the config signature, so it costs a
+retrain, and on a genuinely flat band it buys nothing. Give each sub-band its own metric entry
+with its own limit; that is also how you ask for a shape the single limit cannot express.
 
 ## 4. Running the loop
 

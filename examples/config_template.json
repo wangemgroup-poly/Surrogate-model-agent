@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "project": "C:\path\to\your_structure.cst",
-  "cst_install": "C:\Program Files (x86)\CST Studio Suite 2025",
+  "project": "C:\\path\\to\\your_model.cst",
+  "cst_install": "C:\\Program Files (x86)\\CST Studio Suite 2025",
   "solver": "frequency",
 
   "parameters": {
@@ -14,7 +14,7 @@
     {
       "name": "S11_low_band_dB",
       "kind": "curve",
-      "tree": "1D Results\S-Parameters\S1,1",
+      "tree": "1D Results\\S-Parameters\\S1,1",
       "transform": "db20",
       "reduce": "max",
       "band": [17.8, 18.2],
@@ -23,20 +23,21 @@
       "scale": 1
     },
     {
-      "name": "SLL_low_dB",
-      "kind": "sll_phi_cut",
-      "frequency": 17.8,
-      "phi": 0,
-      "port": 1,
-      "op": "<=",
-      "limit": -9,
+      "name": "S11_high_band_dB",
+      "kind": "curve",
+      "tree": "1D Results\\S-Parameters\\S1,1",
+      "transform": "db20",
+      "reduce": "max",
+      "band": [18.2, 20.2],
+      "op": "<",
+      "limit": -15,
       "scale": 1
     },
     {
-      "name": "gain_ripple_dB",
+      "name": "insertion_loss_ripple_dB",
       "kind": "curve",
-      "tree": "Tables\1D Results\Realized Gain,Theta=0,Phi=0.0",
-      "transform": "real",
+      "tree": "1D Results\\S-Parameters\\S2,1",
+      "transform": "db20",
       "reduce": "ripple",
       "band": [17.8, 20.2],
       "op": "<",
@@ -44,12 +45,22 @@
       "scale": 0.25
     },
     {
-      "name": "minimum_gain_dBi",
+      "name": "minimum_S21_dB",
       "kind": "curve",
-      "tree": "Tables\1D Results\Realized Gain,Theta=0,Phi=0.0",
-      "transform": "real",
+      "tree": "1D Results\\S-Parameters\\S2,1",
+      "transform": "db20",
       "reduce": "min",
       "band": [17.8, 20.2],
+      "scale": 1
+    },
+    {
+      "name": "SLL_low_dB_ANTENNA_ONLY_DELETE_IF_UNUSED",
+      "kind": "sll_phi_cut",
+      "frequency": 17.8,
+      "phi": 0,
+      "port": 1,
+      "op": "<=",
+      "limit": -9,
       "scale": 1
     }
   ],

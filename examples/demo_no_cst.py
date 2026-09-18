@@ -1,6 +1,6 @@
 """End-to-end demo of the surrogate half of the loop — no CST installation required.
 
-Builds a synthetic three-parameter "structure", imports 60 analytic samples as if they were
+Builds a synthetic three-parameter component, imports 60 analytic samples as if they were
 full-wave results, lets the agent select and train a surrogate, and freezes one SB-SADEA
 candidate. Nothing here starts a solver: the task keeps simulation_budget = 0 throughout.
 
@@ -19,30 +19,30 @@ sys.path.insert(0, str(ROOT))
 from simagent import engine  # noqa: E402
 from simagent.core import arrays, fitness, read  # noqa: E402
 
-PARAMS = {"slot_length": [8.0, 9.6], "slot_width": [0.6, 0.9], "spacing": [1.2, 1.7]}
+PARAMS = {"resonator_length": [8.0, 9.6], "gap": [0.6, 0.9], "spacing": [1.2, 1.7]}
 METRICS = [
     dict(name="worst_S11_dB", kind="curve", tree="demo", transform="db20", reduce="max", op="<=", limit=-14, scale=1),
-    dict(name="sidelobe_dB", kind="curve", tree="demo", transform="db20", reduce="max", op="<=", limit=-9, scale=1),
-    dict(name="gain_ripple_dB", kind="curve", tree="demo", transform="real", reduce="ripple", op="<", limit=2, scale=0.25),
+    dict(name="stopband_S21_dB", kind="curve", tree="demo", transform="db20", reduce="max", op="<=", limit=-9, scale=1),
+    dict(name="passband_ripple_dB", kind="curve", tree="demo", transform="real", reduce="ripple", op="<", limit=2, scale=0.25),
 ]
 
 
 def truth(p):
     """Stand-in for the full-wave solver: smooth, coupled, with a built-in trade-off."""
-    a = (p["slot_length"] - 8.9) / 0.8
-    b = (p["slot_width"] - 0.74) / 0.15
+    a = (p["resonator_length"] - 8.9) / 0.8
+    b = (p["gap"] - 0.74) / 0.15
     c = (p["spacing"] - 1.45) / 0.25
     return dict(
         worst_S11_dB=-16.5 + 6.0 * a ** 2 + 2.5 * b ** 2 + 1.2 * (a * c) ** 2,
-        sidelobe_dB=-12.0 + 4.0 * (b + 0.3) ** 2 + 1.5 * c ** 2 - 1.0 * a,
-        gain_ripple_dB=1.1 + 1.6 * c ** 2 + 0.8 * abs(a) - 0.4 * b,
+        stopband_S21_dB=-12.0 + 4.0 * (b + 0.3) ** 2 + 1.5 * c ** 2 - 1.0 * a,
+        passband_ripple_dB=1.1 + 1.6 * c ** 2 + 0.8 * abs(a) - 0.4 * b,
     )
 
 
 def main():
     work = Path(tempfile.mkdtemp(prefix="simagent_demo_"))
     try:
-        project = work / "demo_structure.cst"      # a placeholder: init only needs the file to exist
+        project = work / "demo_component.cst"      # a placeholder: init only needs the file to exist
         project.write_bytes(b"demo placeholder, not a real CST project")
         task = work / "demo_task"
         config = dict(schema_version=1, project=str(project), cst_install=str(work),

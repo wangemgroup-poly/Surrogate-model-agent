@@ -165,6 +165,34 @@ class Workflow(unittest.TestCase):
         params(a,x=.5,b=7.8);cst.check_source(c)                                           # 写入优化参数不影响
         params(a,x=.5,b=7.5)
         with self.assertRaises(AssertionError):cst.check_source(c)                          # 改了固定尺寸被拒
+    def test_setup_band_snapping_and_subband_advice(self):
+        from simagent import setup
+        freq=np.linspace(17.,21.,1001)
+        self.assertEqual(setup.snap_band(freq,17.8,20.2),(17.8,20.2))
+        lo,hi=setup.snap_band(freq,17.8013,20.1994);self.assertAlmostEqual(lo,17.8,3);self.assertAlmostEqual(hi,20.2,3)
+        with self.assertRaises(AssertionError):setup.snap_band(freq,16.5,20.2)      # 超出仿真频率范围
+        band=(17.8,20.2);rng=np.random.default_rng(3);n=60
+        # 最差点在两处来回跳：应建议分段
+        jump=np.array([[-20+10*np.exp(-((f-(18.0 if i%2 else 19.8))**2)/.02) for f in freq] for i in range(n)])
+        worst=setup.worst_frequencies(freq,jump,band,'max')
+        self.assertLess(abs(np.median(worst[::2])-19.8),.05);self.assertLess(abs(np.median(worst[1::2])-18.0),.05)
+        segs=setup.suggest_segments(freq,band,worst)
+        self.assertTrue(segs);self.assertEqual(segs[0][0],band[0]);self.assertEqual(segs[-1][1],band[1])
+        self.assertTrue(all(a<b for a,b in segs) and all(segs[i][1]==segs[i+1][0] for i in range(len(segs)-1)))
+        # 最差点始终在同一处：不建议分段
+        fixed=np.array([[-20+10*np.exp(-((f-19.0)**2)/.02)+.01*i for f in freq] for i in range(n)])
+        self.assertEqual(setup.suggest_segments(freq,band,setup.worst_frequencies(freq,fixed,band,'max')),[])
+        # 峰高随参数连续变化：全带最差值在两峰交替处出现折点（难预测），分段后每段都是平滑的
+        u=np.linspace(0,1,n);base=-25.
+        peaks=lambda hA,hB:base+np.maximum(hA*np.exp(-((freq-18.0)**2)/.02),hB*np.exp(-((freq-19.8)**2)/.02))
+        kinked=np.array([peaks(15-5*v,15-5*(1-v)) for v in u])
+        ks=setup.suggest_segments(freq,band,setup.worst_frequencies(freq,kinked,band,'max'))
+        self.assertTrue(ks)
+        with engine.threadpoolctl_context():
+            g=setup.segmentation_gain(u[:,None],freq,kinked,band,ks,'max',folds=3)
+        self.assertEqual((g['n'],g['folds']),(n,3));self.assertTrue(np.isfinite([g['whole'],g['segmented']]).all())
+        self.assertGreaterEqual(min(g['whole'],g['segmented']),0)
+        self.assertLessEqual(g['segmented'],g['whole'])   # 正是分段建议针对的情形
     def test_backup_copy_survives_paths_beyond_max_path(self):
         import os,shutil
         if os.name!='nt':self.skipTest('仅Windows有MAX_PATH限制')
@@ -181,5 +209,22 @@ class Workflow(unittest.TestCase):
         ingest(self.t,rows,{});text=engine.report(self.t)
         for key in ['## 约束取舍','## 参数边界','## 收敛','tradeoff.svg']:self.assertIn(key,text)
         self.assertTrue((self.t/'tradeoff.svg').exists());self.assertIn('<svg',(self.t/'报告.html').read_text(encoding='utf-8'))
+
+class ShippedFiles(unittest.TestCase):
+    """The files a new user copies must actually load; a broken example costs more than a broken test."""
+    def test_examples_are_valid_json_and_config(self):
+        import json
+        root=Path(__file__).resolve().parents[1]
+        for f in sorted((root/'examples').glob('*.json')):
+            with self.subTest(file=f.name):
+                c=json.loads(f.read_text(encoding='utf-8'))
+                if c.get('schema_version')==1:validate_config(c)
+
+    def test_no_dangling_example_paths(self):
+        root=Path(__file__).resolve().parents[1]
+        import re
+        for f in sorted(root.glob('*.py'))+sorted((root/'simagent').glob('*.py')):
+            for ref in re.findall(r"examples/[A-Za-z0-9_.-]+",f.read_text(encoding='utf-8')):
+                with self.subTest(file=f.name,ref=ref):self.assertTrue((root/ref).exists(),ref)
 
 if __name__=='__main__':unittest.main()
