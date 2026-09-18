@@ -21,6 +21,14 @@ CST projects in a waveguide slot-array study (4, 6, 8, 10 and 12 radiating slots
 - **`cst.read_curves`** — whole 1D curves for every saved run, skipping runs on a different grid.
 
 ### Fixed
+- **Re-importing a project was not idempotent.** The deduplication key was built with Python's
+  `round` on one side and numpy's on the other. Numpy rounds by scaling (`x*1e11`, `rint`,
+  `/1e11`) while Python rounds the exact decimal expansion, so the two disagree in the last digit
+  for some values — `round(np.float64(9.042839596085), 11)` is not `round(9.042839596085, 11)`.
+  Those samples missed the key lookup and were appended again, so a second import of the same
+  project silently duplicated a few designs and weighted them twice in training. Both sides now
+  go through `core.sample_key`. Observed in practice: a 10-slot project re-read three times grew
+  from 381 to 396 samples.
 - `examples/config_template.json` was not valid JSON: Windows paths and result trees contained
   single backslashes, so copying the template produced a parse error on `init`. Backslashes are
   now escaped, and a test loads and validates every shipped example.

@@ -210,6 +210,21 @@ class Workflow(unittest.TestCase):
         for key in ['## 约束取舍','## 参数边界','## 收敛','tradeoff.svg']:self.assertIn(key,text)
         self.assertTrue((self.t/'tradeoff.svg').exists());self.assertIn('<svg',(self.t/'报告.html').read_text(encoding='utf-8'))
 
+    def test_reimport_is_idempotent_despite_numpy_rounding(self):
+        """A value where numpy's scaled round and Python's decimal round disagree at 1e-11.
+
+        Before the fix the second import of the same project silently appended those samples
+        again, quietly weighting them twice in training."""
+        from simagent.core import sample_key
+        v=0.912436941965
+        self.assertNotEqual(round(np.float64(v),11),round(float(v),11))   # the trap this guards
+        self.assertEqual(sample_key([np.float64(v)]),sample_key([v]))
+        rows=[dict(id='R1',parameters={'x':v},metrics={'s':-14.,'g':1.})]
+        ingest(self.t,rows,{});n=len(read(self.t/'data.json')['rows'])
+        self.assertEqual(n,1)
+        ingest(self.t,rows,{})
+        self.assertEqual(len(read(self.t/'data.json')['rows']),n,'重复导入同一工程必须幂等')
+
 class ShippedFiles(unittest.TestCase):
     """The files a new user copies must actually load; a broken example costs more than a broken test."""
     def test_examples_are_valid_json_and_config(self):

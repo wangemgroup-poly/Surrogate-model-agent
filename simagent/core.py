@@ -97,16 +97,26 @@ def fitness(y,c):
         v=y[:,i]-m['limit'] if m['op'] in ['<=','<'] else m['limit']-y[:,i]
         f+=m.get('penalty_weight',1)*np.maximum(v,0)
     return f
+def sample_key(values):
+    """Deduplication key for a parameter vector.
+
+    float() before round() is load-bearing: numpy rounds by scaling (x*1e11, rint, /1e11) while
+    Python rounds the exact decimal expansion, so round(np.float64(9.042839596085),11) and
+    round(float(...),11) can differ in the last digit. Keys built from a stored row (Python floats
+    read back from JSON) then miss keys built from an array, and re-importing the same project
+    silently duplicates those samples instead of being idempotent."""
+    return tuple(round(float(v),11) for v in values)
+
 def ingest(task,incoming,provenance):
     task=Path(task);c=read(task/'config.json');db=read(task/'data.json');names=list(c['parameters']);rejected=[];added=0;repeats=0
-    keys={tuple(round(r['parameters'][n],11) for n in names):r for r in db['rows']}
+    keys={sample_key(r['parameters'][n] for n in names):r for r in db['rows']}
     for r in incoming:
         try:
             x,y=arrays([r],c)
             assert np.isfinite(x).all() and np.isfinite(y).all(),'非有限数值'
             assert ((normalize(x,c)>=-1e-9)&(normalize(x,c)<=1+1e-9)).all(),'参数超出任务范围'
             q=dict(id=r.get('id',r.get('sample_id',str(len(db['rows'])+1))),parameters=dict(zip(names,x[0].tolist())),metrics=dict(zip([m['name'] for m in c['metrics']],y[0].tolist())),provenance=r.get('provenance',provenance),imported=now())
-            key=tuple(round(v,11) for v in x[0])
+            key=sample_key(x[0])
             if key in keys:
                 # Identical reimport is idempotent; numerical repeats retained separately.
                 if q['metrics']!=keys[key]['metrics'] and not any(t['parameters']==q['parameters'] and t['metrics']==q['metrics'] for t in db['repeats']):db['repeats'].append(q);repeats+=1
